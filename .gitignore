@@ -64,6 +64,8 @@ AGENTS.md
 
 # Keep deployment info
 !deployments/sepolia/
+!contracts/deployments/sepolia/
+!contracts/deployments/sepolia/**
 
 # Logs
 logs/
