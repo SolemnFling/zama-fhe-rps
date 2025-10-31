@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production
+build/
+dist/
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local env files
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Hardhat
+cache/
+artifacts/
+typechain-types/
+deployments/localhost/
+
+# FHEVM temp files
+fhevmTemp/
+
+# Wallet files (keep these secret!)
+.wallet*.json
+*.wallet.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation (exclude from submission)
+docs/
+AGENTS.md
+*.md
+!README.md
+!contracts/README.md
+
+# Keep deployment info
+!deployments/sepolia/
+
+# Logs
+logs/
+*.log
