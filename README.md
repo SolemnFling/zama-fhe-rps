@@ -1,11 +1,28 @@
 # 🎮 Private Rock-Paper-Scissors on FHEVM
 
-A fully homomorphic encryption (FHE) based Rock-Paper-Scissors game built on Zama's FHEVM protocol. Players can compete with complete privacy - moves remain encrypted on-chain until both players commit, ensuring fair gameplay without revealing strategies.
+A fully homomorphic encryption (FHE) based Rock-Paper-Scissors game built on Zama's FHEVM protocol. Players can compete with **complete privacy** - moves remain encrypted on-chain until both players commit, ensuring fair gameplay without revealing strategies.
+
+## 🔐 Why Privacy Matters
+
+Traditional on-chain games expose all player actions publicly, allowing:
+- ❌ Opponents to analyze your play patterns
+- ❌ Bots to observe and exploit your strategies
+- ❌ Historical moves to reveal behavioral tendencies
+
+**Our Solution with FHEVM:**
+- ✅ **Every move is encrypted** (euint8) before going on-chain
+- ✅ **No one can see your play history** - not even blockchain explorers
+- ✅ **Pattern analysis is impossible** - encrypted data reveals nothing
+- ✅ **Fair gameplay guaranteed** - winner computed in FHE without revealing moves
+- ✅ **Strategy protection** - your playing style remains completely private
+
+This is the first Rock-Paper-Scissors game where **your moves are truly yours** - no one can study your habits or predict your next play!
 
 ## 🌟 Features
 
 ### Privacy-Preserving Gameplay
 - **Encrypted Moves**: Player choices (rock/paper/scissors) are encrypted using FHEVM before being sent on-chain
+- **Protected History**: Your entire play history remains encrypted - no pattern analysis possible
 - **Fair Resolution**: No player can see opponent's move until both have committed
 - **On-chain Logic**: All game logic executes in FHE, maintaining privacy throughout
 
@@ -64,8 +81,8 @@ Sepolia testnet ETH
 
 1. **Clone and Install**
 ```bash
-git clone <your-repo>
-cd zama
+git clone https://github.com/SolemnFling/zama-fhe-rps.git
+cd zama-fhe-rps
 ```
 
 2. **Install Contracts Dependencies**
@@ -159,7 +176,9 @@ Visit `http://localhost:3000/rps`
 ```
 
 ### Security Features
-- ✅ Encrypted moves (euint8)
+- ✅ Encrypted moves (euint8) - completely invisible on-chain
+- ✅ Historical privacy - all past moves remain encrypted forever
+- ✅ Pattern-proof design - impossible to analyze play style
 - ✅ Commit-reveal pattern via FHE
 - ✅ Deadline enforcement
 - ✅ Reentrancy protection
@@ -167,9 +186,23 @@ Visit `http://localhost:3000/rps`
 
 ## 🛠️ Technical Implementation
 
-### FHE Encryption Flow
+### How Privacy Works
 
-**Client-side (Frontend):**
+1. **Client-Side Encryption**: Your move is encrypted locally before leaving your browser
+2. **On-Chain Storage**: Only encrypted data (euint8) is stored on blockchain
+3. **FHE Computation**: Winner is computed without decrypting individual moves
+4. **Result Only**: Only the final winner is revealed - moves stay encrypted
+
+**Key Technologies:**
+- FHEVM for encrypted computation
+- euint8 encrypted integers for moves
+- TFHE library for FHE operations
+- Client-side encryption with fhevm-sdk
+
+<details>
+<summary>🔍 Click to see detailed code examples</summary>
+
+### Client-side Encryption
 ```typescript
 // 1. Get FHEVM instance
 const instance = await createInstance({ provider, chainId: 11155111 });
@@ -187,28 +220,23 @@ await contract.createAndCommit(
 );
 ```
 
-**Contract-side (Solidity):**
+### Contract-side Storage
 ```solidity
-// 1. Store encrypted moves
+// Store encrypted moves
 matches[matchId].encMoveA = TFHE.asEuint8(encMove);
 matches[matchId].encMoveB = TFHE.asEuint8(encMove);
 
-// 2. Compute winner in FHE
+// Compute winner in FHE
 euint8 result = computeWinner(encMoveA, encMoveB);
-
-// 3. Determine winner
-// 0 = draw, 1 = A wins, 2 = B wins
 ```
 
-### RPS Logic in FHE
+### FHE Winner Logic
 ```solidity
 function computeWinner(euint8 moveA, euint8 moveB) 
     internal view returns (euint8) 
 {
-    // Rock(0) beats Scissors(2)
-    // Paper(1) beats Rock(0)
-    // Scissors(2) beats Paper(1)
-    
+    // All comparisons happen in encrypted space
+    // Rock(0) beats Scissors(2), Paper(1) beats Rock(0), etc.
     ebool aWins = TFHE.or(
         TFHE.and(TFHE.eq(moveA, 0), TFHE.eq(moveB, 2)),
         TFHE.or(
@@ -219,6 +247,8 @@ function computeWinner(euint8 moveA, euint8 moveB)
     // ...
 }
 ```
+
+</details>
 
 ## 🧪 Testing
 
@@ -267,16 +297,26 @@ zama/
 
 ## 🔐 Privacy Guarantees
 
-### What's Private?
-- ✅ Player moves (encrypted as euint8)
-- ✅ Game logic computation (FHE operations)
-- ✅ Intermediate results during resolution
+### What Stays Encrypted Forever? 🔒
+- ✅ **Your move in every game** (encrypted as euint8)
+- ✅ **Your entire play history** - all past moves remain encrypted on-chain
+- ✅ **Opponent's moves** - you never see what they played
+- ✅ **Game logic computation** (FHE operations)
+- ✅ **Intermediate results** during resolution
 
-### What's Public?
-- ✅ Match creation events
-- ✅ Player addresses
+**This means:**
+- 🛡️ No one can analyze your play patterns
+- 🛡️ No one can predict your next move based on history
+- 🛡️ No one can scrape blockchain data to study your strategy
+- 🛡️ Even Etherscan shows only encrypted data
+
+### What's Public? 📢
+- ✅ Match creation events (someone started a game)
+- ✅ Player addresses (who's playing)
 - ✅ Final winner (after resolution)
 - ✅ Stakes and prizes
+
+**Privacy First**: We reveal only what's necessary for the game to function. Your actual moves? Forever encrypted! 🔐
 
 ## 🐛 Known Limitations
 
