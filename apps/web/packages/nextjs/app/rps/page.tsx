@@ -86,6 +86,7 @@ function CompactHistoryCard({
   const isWinner = !actuallyExpired && isResolved && matchData.winner.toLowerCase() === myAddress.toLowerCase();
   const isLoser = !actuallyExpired && isResolved && isMyMatch && matchData.winner !== ethers.ZeroAddress && !isWinner;
   const isDraw = !actuallyExpired && isResolved && matchData.winner === ethers.ZeroAddress;
+  const isVoid = actuallyExpired && isResolved; // 过期后结算的是流局
 
   // 格式化相对时间（显示离deadline还有多久，或者过去多久）
   const formatTimeRemaining = (deadline: number) => {
@@ -135,8 +136,12 @@ function CompactHistoryCard({
           </span>
         </div>
         
-        {/* 输赢状态 - 过期优先显示 */}
-        {actuallyExpired ? (
+        {/* 输赢状态 - 区分流局和过期 */}
+        {isVoid ? (
+          <div className="text-gray-600 font-black flex items-center gap-1">
+            ❌ 流局 {/* 过期后结算的 */}
+          </div>
+        ) : actuallyExpired ? (
           <div className="text-red-600 font-black flex items-center gap-1">
             ⌛ {t.matchExpired}
           </div>
@@ -159,7 +164,8 @@ function CompactHistoryCard({
         ) : null}
       </div>
 
-      {canClaim && (
+      {/* 按钮逻辑: 优先级 Claim > Mark Expired > Refund (互斥显示) */}
+      {canClaim ? (
         <button
           onClick={() => claim(matchId)}
           disabled={isProcessing}
@@ -167,8 +173,7 @@ function CompactHistoryCard({
         >
           💰 {t.claim}
         </button>
-      )}
-      {canExpire && (
+      ) : canExpire ? (
         <button
           onClick={() => expireCreated(matchId)}
           disabled={isProcessing}
@@ -176,8 +181,7 @@ function CompactHistoryCard({
         >
           ⌛ {t.markExpired}
         </button>
-      )}
-      {actuallyExpired && isMyMatch && (
+      ) : actuallyExpired && isMyMatch ? (
         <button
           onClick={() => claim(matchId)}
           disabled={isProcessing}
@@ -185,7 +189,7 @@ function CompactHistoryCard({
         >
           💰 {t.refund}
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
