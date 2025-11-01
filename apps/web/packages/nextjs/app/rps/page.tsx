@@ -238,7 +238,10 @@ export default function RPSPage() {
     matchHistory,
     isLoadingHistory,
     fetchMatchHistory,
-  } = usePrivateRPSWagmi({ instance });
+  } = usePrivateRPSWagmi({ 
+    instance,
+    initialMockChains: scaffoldConfig.rpcOverrides,
+  });
 
   const [stakeInput, setStakeInput] = useState<string>("0.001");
   const [pendingCount, setPendingCount] = useState<number>(0);
