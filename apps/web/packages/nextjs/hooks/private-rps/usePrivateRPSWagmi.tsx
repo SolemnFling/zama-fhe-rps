@@ -11,6 +11,7 @@ import {
 } from "fhevm-sdk";
 import { useReadContract } from "wagmi";
 import type { AllowedChainIds } from "~~/utils/helper/networks";
+import deployedContracts from "~~/contracts/deployedContracts";
 
 export type MatchMode = 0 | 1; // PRACTICE=0, WAGER=1
 export type Move = 0 | 1 | 2; // ROCK=0, PAPER=1, SCISSORS=2
@@ -26,11 +27,27 @@ export const usePrivateRPSWagmi = (params: {
   const allowedChainId = typeof chainId === "number" ? (chainId as AllowedChainIds) : undefined;
   const { data: contract } = useDeployedContractInfo({ contractName: "PrivateRPS", chainId: allowedChainId });
 
+  // 备用方案：如果 FHEVM 未初始化导致 contract 为空，直接使用部署的合约信息
+  const effectiveContract = useMemo(() => {
+    if (contract) return contract;
+    // 硬编码 Sepolia 合约信息作为备用
+    const sepoliaChainId = 11155111;
+    if (chainId === sepoliaChainId && (deployedContracts as any)[sepoliaChainId]?.PrivateRPS) {
+      const rpsContract = (deployedContracts as any)[sepoliaChainId].PrivateRPS;
+      console.log("⚠️ 使用备用合约配置:", rpsContract.address);
+      return {
+        address: rpsContract.address,
+        abi: rpsContract.abi,
+      };
+    }
+    return contract;
+  }, [contract, chainId]);
+
   const [message, setMessage] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isMatching, setIsMatching] = useState<boolean>(false);
 
-  const hasContract = Boolean(contract?.address && contract?.abi);
+  const hasContract = Boolean(effectiveContract?.address && effectiveContract?.abi);
   const hasProvider = Boolean(ethersReadonlyProvider);
   const hasSigner = Boolean(ethersSigner);
 
@@ -38,7 +55,7 @@ export const usePrivateRPSWagmi = (params: {
     if (!hasContract) return undefined;
     const providerOrSigner = mode === "read" ? ethersReadonlyProvider : ethersSigner;
     if (!providerOrSigner) return undefined;
-    return new ethers.Contract(contract!.address, contract!.abi as any, providerOrSigner);
+    return new ethers.Contract(effectiveContract!.address, effectiveContract!.abi as any, providerOrSigner);
   };
 
   // --- 辅助函数: 轮询获取交易回执 (避免 RPC 超时) ---
@@ -86,8 +103,8 @@ export const usePrivateRPSWagmi = (params: {
       }
       setIsLoadingHistory(true);
       try {
-        const read = new ethers.Contract(contract!.address, contract!.abi as any, ethersReadonlyProvider);
-        console.log("📡 查询合约事件:", contract!.address);
+        const read = new ethers.Contract(effectiveContract!.address, effectiveContract!.abi as any, ethersReadonlyProvider);
+        console.log("📡 查询合约事件:", effectiveContract!.address);
 
         // 查询用户作为 playerA 创建的对局（最近2000块，约8小时）
         console.log("🔍 查询 MatchCreated 事件...");
@@ -122,13 +139,13 @@ export const usePrivateRPSWagmi = (params: {
         return sortedMatchIds;
       } catch (e) {
         console.error("❌ fetchMatchHistory 失败:", e);
-        // 失败时不清空现有数据
-        return matchHistory;
+        // 失败时返回空数组，避免依赖旧状态
+        return [];
       } finally {
         setIsLoadingHistory(false);
       }
     },
-    [hasContract, hasProvider, ethersReadonlyProvider, contract, matchHistory],
+    [hasContract, hasProvider, ethersReadonlyProvider, effectiveContract],
   );
 
   // 初始化历史记录（当有地址时）- 暂时禁用自动加载以避免RPC限流
@@ -151,8 +168,8 @@ export const usePrivateRPSWagmi = (params: {
 
   // --- Reads ---
   const statusRead = useReadContract({
-    address: (hasContract ? (contract!.address as `0x${string}`) : undefined) as `0x${string}` | undefined,
-    abi: (hasContract ? (contract!.abi as any) : undefined) as any,
+    address: (hasContract ? (effectiveContract!.address as `0x${string}`) : undefined) as `0x${string}` | undefined,
+    abi: (hasContract ? (effectiveContract!.abi as any) : undefined) as any,
     functionName: "getStatus" as const,
     args: currentMatchId && currentMatchId !== "0x" + "0".repeat(64) ? [currentMatchId as `0x${string}`] : undefined,
     query: {
@@ -167,8 +184,8 @@ export const usePrivateRPSWagmi = (params: {
 
   // Encrypted outcome handle (只在 LOCKED 或 RESOLVED 状态可读)
   const encOutcomeRead = useReadContract({
-    address: (hasContract ? (contract!.address as `0x${string}`) : undefined) as `0x${string}` | undefined,
-    abi: (hasContract ? (contract!.abi as any) : undefined) as any,
+    address: (hasContract ? (effectiveContract!.address as `0x${string}`) : undefined) as `0x${string}` | undefined,
+    abi: (hasContract ? (effectiveContract!.abi as any) : undefined) as any,
     functionName: "getEncryptedOutcome" as const,
     args: currentMatchId && currentMatchId !== "0x" + "0".repeat(64) ? [currentMatchId as `0x${string}`] : undefined,
     query: {
@@ -206,7 +223,7 @@ export const usePrivateRPSWagmi = (params: {
     chainId,
     requests:
       encOutcomeHandle && encOutcomeHandle !== ethers.ZeroHash
-        ? [{ handle: encOutcomeHandle, contractAddress: contract?.address! }]
+        ? [{ handle: encOutcomeHandle, contractAddress: effectiveContract?.address! }]
         : undefined,
   });
 
@@ -216,7 +233,7 @@ export const usePrivateRPSWagmi = (params: {
   const { encryptWith } = useFHEEncryption({
     instance,
     ethersSigner: ethersSigner as any,
-    contractAddress: contract?.address,
+    contractAddress: effectiveContract?.address,
   });
 
   // --- 新接口: 查询匹配队列 ---
@@ -343,7 +360,7 @@ export const usePrivateRPSWagmi = (params: {
         setIsMatching(false);
 
         // 2. 加密出手
-        const fn = (contract!.abi as readonly any[] as any[]).find(
+        const fn = (effectiveContract!.abi as readonly any[] as any[]).find(
           it => it.type === "function" && (it.name === "createAndCommit" || it.name === "joinAndCommit"),
         );
         const encMoveInput = fn?.inputs?.find((inp: any) => inp.name === "encMove");
@@ -508,7 +525,7 @@ export const usePrivateRPSWagmi = (params: {
 
   return {
     // data
-    contractAddress: contract?.address,
+    contractAddress: effectiveContract?.address,
     currentMatchId,
     status,
     encOutcomeHandle,
